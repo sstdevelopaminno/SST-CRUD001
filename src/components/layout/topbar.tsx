@@ -1,7 +1,6 @@
-import { Bell } from "lucide-react";
-
-import { logoutAction } from "@/app/actions/auth";
+﻿import { logoutAction } from "@/app/actions/auth";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
+import { NotificationsMenu } from "@/components/layout/notifications-menu";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -14,14 +13,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { AppLocale } from "@/lib/i18n/config";
+import type { Dictionary } from "@/lib/i18n/get-dictionary";
+import type { NotificationRow } from "@/services/notifications.service";
 
 interface TopbarProps {
   locale: AppLocale;
+  dictionary: Dictionary;
   name: string;
   email: string;
+  notifications: NotificationRow[];
 }
 
-export function Topbar({ locale, name, email }: TopbarProps) {
+export function Topbar({ locale, dictionary, name, email, notifications }: TopbarProps) {
   const initials = name
     .split(" ")
     .slice(0, 2)
@@ -37,10 +40,16 @@ export function Topbar({ locale, name, email }: TopbarProps) {
       <div className="flex items-center gap-3">
         <ThemeToggle />
         <LanguageSwitcher locale={locale} />
-        <Button variant="outline" size="sm" className="gap-2" data-audit-action="open-notifications" data-audit-type="notification">
-          <Bell className="h-4 w-4" />
-          Notifications
-        </Button>
+        <NotificationsMenu
+          locale={locale}
+          initialItems={notifications}
+          labels={{
+            title: dictionary.topbar.notifications,
+            empty: dictionary.topbar.noNotifications,
+            markAll: dictionary.topbar.markAllRead,
+            new: dictionary.topbar.new,
+          }}
+        />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="h-10 w-10 rounded-full p-0">
@@ -55,13 +64,13 @@ export function Topbar({ locale, name, email }: TopbarProps) {
               <p className="text-xs text-muted-foreground">{email}</p>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem disabled>Profile</DropdownMenuItem>
-            <DropdownMenuItem disabled>Security</DropdownMenuItem>
+            <DropdownMenuItem disabled>{dictionary.topbar.profile}</DropdownMenuItem>
+            <DropdownMenuItem disabled>{dictionary.topbar.security}</DropdownMenuItem>
             <DropdownMenuSeparator />
             <form action={logoutAction}>
               <input type="hidden" name="locale" value={locale} />
               <Button type="submit" variant="destructive" className="w-full" data-audit-action="logout" data-audit-type="auth">
-                Sign out
+                {dictionary.topbar.signOut}
               </Button>
             </form>
           </DropdownMenuContent>

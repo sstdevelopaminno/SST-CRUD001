@@ -1,7 +1,8 @@
-"use server";
+﻿"use server";
 
 import { assertPermission } from "@/lib/auth/permissions";
 import { logAuditEvent } from "@/lib/audit";
+import { createInAppNotification } from "@/lib/notifications";
 import { createClient } from "@/lib/supabase/server";
 
 export async function updateApprovalStatusAction(payload: {
@@ -20,7 +21,7 @@ export async function updateApprovalStatusAction(payload: {
 
   const status = payload.ceo_override && user.role === "CEO" ? "approved" : payload.status;
 
-  const { error } = await supabase
+  const { data: approval, error } = await supabase
     .from("approvals")
     .update({
       status,
@@ -28,7 +29,9 @@ export async function updateApprovalStatusAction(payload: {
       approved_at: new Date().toISOString(),
       note: payload.note ?? null,
     })
-    .eq("id", payload.approval_id);
+    .eq("id", payload.approval_id)
+    .select("id, requester_id, entity_type, entity_id")
+    .single();
 
   if (error) {
     return { ok: false, message: error.message };
@@ -44,6 +47,14 @@ export async function updateApprovalStatusAction(payload: {
       note: payload.note,
     },
   });
+
+  if (approval?.requester_id) {
+    await createInAppNotification(
+      approval.requester_id,
+      status === "approved" ? "Approval completed" : "Approval rejected",
+      `${approval.entity_type} ${approval.entity_id} was ${status} by ${user.full_name}.`,
+    );
+  }
 
   return { ok: true, message: "Updated" };
 }

@@ -1,9 +1,10 @@
-"use server";
+﻿"use server";
 
 import { revalidatePath } from "next/cache";
 
 import { assertPermission } from "@/lib/auth/permissions";
 import { logAuditEvent } from "@/lib/audit";
+import { createInAppNotification } from "@/lib/notifications";
 import { createClient } from "@/lib/supabase/server";
 
 export async function uploadDocumentAction(formData: FormData) {
@@ -34,13 +35,17 @@ export async function uploadDocumentAction(formData: FormData) {
     return { ok: false, message: uploadError.message };
   }
 
-  const { error: insertError } = await supabase.from("documents").insert({
-    title,
-    file_path: filePath,
-    file_type: file.type,
-    file_size: file.size,
-    uploaded_by: user.id,
-  });
+  const { data: insertedDocument, error: insertError } = await supabase
+    .from("documents")
+    .insert({
+      title,
+      file_path: filePath,
+      file_type: file.type,
+      file_size: file.size,
+      uploaded_by: user.id,
+    })
+    .select("id")
+    .single();
 
   if (insertError) {
     return { ok: false, message: insertError.message };
@@ -49,7 +54,7 @@ export async function uploadDocumentAction(formData: FormData) {
   await logAuditEvent({
     action_type: "document_uploaded",
     entity_type: "documents",
-    entity_id: filePath,
+    entity_id: insertedDocument?.id ?? filePath,
     metadata: { title, size: file.size, type: file.type },
   });
 
@@ -70,6 +75,8 @@ export async function saveSignatureAction(payload: {
     return { ok: false, message: "Supabase is not configured" };
   }
 
+  const { data: document } = await supabase.from("documents").select("id, title, uploaded_by").eq("id", payload.document_id).single();
+
   const { error } = await supabase.from("signatures").insert({
     document_id: payload.document_id,
     signer_id: user.id,
@@ -86,6 +93,14 @@ export async function saveSignatureAction(payload: {
     entity_type: "documents",
     entity_id: payload.document_id,
   });
+
+  if (document?.uploaded_by && document.uploaded_by !== user.id) {
+    await createInAppNotification(
+      document.uploaded_by,
+      "Document signed",
+      `${document.title} has been signed by ${user.full_name}.`,
+    );
+  }
 
   return { ok: true, message: "Signed" };
 }

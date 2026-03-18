@@ -1,4 +1,4 @@
-const en = {
+﻿const en = {
   app: {
     company: "SST INNOVATION CO., LTD.",
     subtitle: "Enterprise SaaS Backoffice",
@@ -21,6 +21,15 @@ const en = {
     password: "Password",
     welcome: "Welcome back",
     hint: "Use your Supabase credentials.",
+  },
+  topbar: {
+    notifications: "Notifications",
+    markAllRead: "Mark all read",
+    noNotifications: "No notifications",
+    new: "New",
+    profile: "Profile",
+    security: "Security",
+    signOut: "Sign out",
   },
   nav: {
     dashboard: "Dashboard",

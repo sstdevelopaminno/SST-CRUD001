@@ -78,7 +78,9 @@ public/
 - `npm run lint`
 - `npm run typecheck`
 - `npm run build`
+- `npm run verify:supabase` (checks required tables and RLS health via `schema_healthcheck` RPC)
 
 ## Deployment
 - Ready for Vercel
 - Ensure all environment variables are configured in project settings
+

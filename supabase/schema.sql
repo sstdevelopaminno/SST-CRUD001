@@ -449,3 +449,80 @@ for insert with check (bucket_id = 'documents' and auth.role() = 'authenticated'
 create policy "documents_bucket_update" on storage.objects
 for update using (bucket_id = 'documents' and auth.role() = 'authenticated')
 with check (bucket_id = 'documents' and auth.role() = 'authenticated');
+
+create index if not exists idx_customers_owner_id on public.customers(owner_id);
+create index if not exists idx_projects_customer_id on public.projects(customer_id);
+create index if not exists idx_projects_owner_id on public.projects(owner_id);
+create index if not exists idx_projects_status on public.projects(status);
+create index if not exists idx_jobs_project_id on public.jobs(project_id);
+create index if not exists idx_jobs_assignee_id on public.jobs(assignee_id);
+create index if not exists idx_jobs_status on public.jobs(status);
+create index if not exists idx_invoices_customer_id on public.invoices(customer_id);
+create index if not exists idx_invoices_status on public.invoices(status);
+create index if not exists idx_purchase_orders_status on public.purchase_orders(status);
+create index if not exists idx_documents_uploaded_by on public.documents(uploaded_by);
+create index if not exists idx_documents_created_at on public.documents(created_at desc);
+create index if not exists idx_signatures_document_id on public.signatures(document_id);
+create index if not exists idx_approvals_status on public.approvals(status);
+create index if not exists idx_approvals_approver_id on public.approvals(approver_id);
+create index if not exists idx_approvals_requester_id on public.approvals(requester_id);
+create index if not exists idx_approvals_created_at on public.approvals(created_at desc);
+create index if not exists idx_audit_logs_user_id on public.audit_logs(user_id);
+create index if not exists idx_audit_logs_timestamp on public.audit_logs(timestamp desc);
+create index if not exists idx_notifications_user_id on public.notifications(user_id);
+create index if not exists idx_notifications_user_read on public.notifications(user_id, read);
+create index if not exists idx_notifications_created_at on public.notifications(created_at desc);
+
+create or replace function public.schema_healthcheck()
+returns table (
+  table_name text,
+  table_exists boolean,
+  rls_enabled boolean,
+  policy_count bigint
+)
+language plpgsql
+security definer
+set search_path = public, pg_catalog
+as $$
+begin
+  if auth.role() <> 'service_role' and public.get_my_role() not in ('CEO', 'IT') then
+    raise exception 'not authorized';
+  end if;
+
+  return query
+  with required_tables(name) as (
+    values
+      ('users'),
+      ('roles'),
+      ('permissions'),
+      ('role_permissions'),
+      ('customers'),
+      ('projects'),
+      ('jobs'),
+      ('invoices'),
+      ('purchase_orders'),
+      ('approvals'),
+      ('documents'),
+      ('signatures'),
+      ('audit_logs'),
+      ('api_configs'),
+      ('feature_flags'),
+      ('notifications')
+  )
+  select
+    t.name,
+    c.oid is not null as table_exists,
+    coalesce(c.relrowsecurity, false) as rls_enabled,
+    coalesce((
+      select count(*)
+      from pg_policies p
+      where p.schemaname = 'public'
+        and p.tablename = t.name
+    ), 0) as policy_count
+  from required_tables t
+  left join pg_class c
+    on c.relname = t.name
+   and c.relkind = 'r'
+   and c.relnamespace = 'public'::regnamespace;
+end;
+$$;

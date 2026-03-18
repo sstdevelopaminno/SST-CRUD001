@@ -100,3 +100,28 @@ export const apiConfigs = [
     headers: { "X-Client": "sst" },
   },
 ];
+
+
+export const notifications = [
+  {
+    id: "N-001",
+    title: "Approval Required",
+    body: "PO-401 is waiting for your approval.",
+    read: false,
+    created_at: "2026-03-18T08:30:00.000Z",
+  },
+  {
+    id: "N-002",
+    title: "Document Signed",
+    body: "Master Service Agreement has been signed.",
+    read: false,
+    created_at: "2026-03-18T06:10:00.000Z",
+  },
+  {
+    id: "N-003",
+    title: "System Alert",
+    body: "API Gateway latency is above the threshold.",
+    read: true,
+    created_at: "2026-03-17T20:20:00.000Z",
+  },
+];

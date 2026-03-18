@@ -1,4 +1,4 @@
-const th = {
+﻿const th = {
   app: {
     company: "SST INNOVATION CO., LTD.",
     subtitle: "ระบบหลังบ้าน SaaS ระดับองค์กร",
@@ -21,6 +21,15 @@ const th = {
     password: "รหัสผ่าน",
     welcome: "ยินดีต้อนรับกลับ",
     hint: "ใช้บัญชีจาก Supabase ในการเข้าสู่ระบบ",
+  },
+  topbar: {
+    notifications: "การแจ้งเตือน",
+    markAllRead: "อ่านทั้งหมด",
+    noNotifications: "ไม่มีการแจ้งเตือน",
+    new: "ใหม่",
+    profile: "โปรไฟล์",
+    security: "ความปลอดภัย",
+    signOut: "ออกจากระบบ",
   },
   nav: {
     dashboard: "แดชบอร์ด",
