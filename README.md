@@ -73,6 +73,8 @@ public/
 5. Run:
    - `npm install`
    - `npm run dev`
+   - Open `http://127.0.0.1:3000/en/login` (preferred on Windows if `localhost` fails)
+   - If port conflict, run `npm run dev:reset`
 
 ## Validation Commands
 - `npm run lint`
