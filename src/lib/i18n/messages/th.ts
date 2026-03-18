@@ -21,6 +21,7 @@
     password: "รหัสผ่าน",
     welcome: "ยินดีต้อนรับกลับ",
     hint: "ใช้บัญชีจาก Supabase ในการเข้าสู่ระบบ",
+    loginSuccess: "เข้าสู่ระบบสำเร็จ",
   },
   topbar: {
     notifications: "การแจ้งเตือน",

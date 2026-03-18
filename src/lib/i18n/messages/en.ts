@@ -21,6 +21,7 @@
     password: "Password",
     welcome: "Welcome back",
     hint: "Use your Supabase credentials.",
+    loginSuccess: "Login successful",
   },
   topbar: {
     notifications: "Notifications",
