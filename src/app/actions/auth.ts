@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 import { redirect } from "next/navigation";
 
@@ -11,6 +11,22 @@ export interface LoginActionState {
   error: string | null;
   success: boolean;
   redirectTo: string | null;
+}
+
+function getSafeRedirectPath(nextPath: string | null, locale: string) {
+  if (!nextPath || !nextPath.startsWith("/")) {
+    return `/${locale}/dashboard`;
+  }
+
+  if (nextPath.startsWith("//")) {
+    return `/${locale}/dashboard`;
+  }
+
+  if (!nextPath.startsWith(`/${locale}`)) {
+    return `/${locale}/dashboard`;
+  }
+
+  return nextPath;
 }
 
 export async function loginAction(_: LoginActionState, formData: FormData): Promise<LoginActionState> {
@@ -41,25 +57,28 @@ export async function loginAction(_: LoginActionState, formData: FormData): Prom
   });
 
   if (error || !data.session) {
-    await logAuditEvent({
+    void logAuditEvent({
       action_type: "login_failed",
       entity_type: "auth",
       metadata: { email: parsed.data.email },
-    });
+    }).catch(() => undefined);
 
     return { error: error?.message ?? "Login failed", success: false, redirectTo: null };
   }
 
-  await logAuditEvent({
+  void logAuditEvent({
     action_type: "login_success",
     entity_type: "auth",
     metadata: { user_id: data.user.id },
-  });
+  }).catch(() => undefined);
+
+  const nextPath = formData.get("next");
+  const redirectTo = getSafeRedirectPath(typeof nextPath === "string" ? nextPath : null, parsed.data.locale);
 
   return {
     error: null,
     success: true,
-    redirectTo: `/${parsed.data.locale}/dashboard`,
+    redirectTo,
   };
 }
 

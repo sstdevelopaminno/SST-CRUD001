@@ -5,8 +5,15 @@ import { getDictionaryByPath } from "@/lib/i18n/get-dictionary";
 const LOGO_URL =
   "https://vdvpqowmusdgthmotbfe.supabase.co/storage/v1/object/public/sstcrud/Image%20001.png";
 
-export default async function LoginPage({ params }: { params: { locale: string } }) {
+interface LoginPageProps {
+  params: { locale: string };
+  searchParams?: { next?: string | string[] };
+}
+
+export default async function LoginPage({ params, searchParams }: LoginPageProps) {
   const { locale, dictionary } = await getDictionaryByPath(params.locale);
+  const nextParam = searchParams?.next;
+  const nextPath = typeof nextParam === "string" ? nextParam : nextParam?.[0] ?? null;
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 p-4">
@@ -23,11 +30,10 @@ export default async function LoginPage({ params }: { params: { locale: string }
             </div>
           </CardHeader>
           <CardContent className="pt-2">
-            <LoginForm locale={locale} dictionary={dictionary} />
+            <LoginForm locale={locale} nextPath={nextPath} dictionary={dictionary} />
           </CardContent>
         </Card>
       </div>
     </div>
   );
 }
-
