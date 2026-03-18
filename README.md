@@ -1,36 +1,84 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SST Backoffice (Next.js 14 + Supabase)
 
-## Getting Started
+Enterprise-grade SaaS backoffice for **SST INNOVATION CO., LTD.** with bilingual UX (English + Thai), RBAC, IT control panel, full audit logging, and PWA support.
 
-First, run the development server:
+## Stack
+- Next.js 14 (App Router)
+- TypeScript
+- TailwindCSS
+- ShadCN-style UI components
+- Supabase (Auth, PostgreSQL, Storage)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Features
+- Supabase Auth (email/password)
+- Session-aware middleware
+- RBAC: `CEO`, `MANAGER`, `HEAD`, `STAFF`, `IT`
+- IT Panel: feature flags, API config, health widgets, module control
+- Modules: Dashboard, CRM, Projects, Jobs, Billing, Documents, Approvals, Admin
+- Multi-level approvals with CEO override path
+- Document upload + signature capture
+- Audit logging for page visits, clicks, approvals, document events, data actions
+- Import/Export (CSV/JSON)
+- PWA (`manifest.webmanifest`, `sw.js`)
+
+## i18n
+- Localized routes: `/{locale}/...`
+- Supported locales: `en`, `th`
+- Middleware locale fallback -> `/en`
+
+## Project Structure
+```text
+src/
+  app/
+    [locale]/
+      (auth)/login
+      (protected)/
+        dashboard
+        crm
+        projects
+        jobs
+        billing
+        documents
+        approvals
+        admin
+        it-panel
+    actions/
+  components/
+    layout/
+    ui/
+    dashboard/
+    documents/
+    it-panel/
+    shared/
+  hooks/
+  lib/
+    auth/
+    constants/
+    i18n/
+    supabase/
+  services/
+  types/
+supabase/
+  schema.sql
+public/
+  manifest.webmanifest
+  sw.js
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Setup
+1. Copy `.env.example` -> `.env.local`
+2. Fill Supabase environment values
+3. Run SQL in `supabase/schema.sql`
+4. Create `documents` storage bucket in Supabase (or keep SQL bucket section)
+5. Run:
+   - `npm install`
+   - `npm run dev`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Validation Commands
+- `npm run lint`
+- `npm run typecheck`
+- `npm run build`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Deployment
+- Ready for Vercel
+- Ensure all environment variables are configured in project settings
