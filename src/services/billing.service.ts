@@ -1,20 +1,24 @@
 import { createClient } from "@/lib/supabase/server";
 import { invoices, purchaseOrders } from "@/services/mock-data";
 
-export async function getBillingData() {
+const DEFAULT_LIMIT = 100;
+
+export async function getBillingData(limit = DEFAULT_LIMIT) {
   const supabase = createClient();
 
   if (!supabase) {
-    return { invoices, purchaseOrders };
+    return { invoices: invoices.slice(0, limit), purchaseOrders: purchaseOrders.slice(0, limit) };
   }
 
+  const safeLimit = Math.min(Math.max(limit, 1), 200);
+
   const [invoiceRes, poRes] = await Promise.all([
-    supabase.from("invoices").select("id, invoice_no, amount, status").order("created_at", { ascending: false }),
-    supabase.from("purchase_orders").select("id, po_no, vendor_name, amount, status").order("created_at", { ascending: false }),
+    supabase.from("invoices").select("id, invoice_no, amount, status").order("created_at", { ascending: false }).limit(safeLimit),
+    supabase.from("purchase_orders").select("id, po_no, vendor_name, amount, status").order("created_at", { ascending: false }).limit(safeLimit),
   ]);
 
   if (invoiceRes.error || poRes.error || !invoiceRes.data || !poRes.data) {
-    return { invoices, purchaseOrders };
+    return { invoices: invoices.slice(0, safeLimit), purchaseOrders: purchaseOrders.slice(0, safeLimit) };
   }
 
   return {

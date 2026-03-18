@@ -16,11 +16,21 @@ export async function getNotifications(limit = 10): Promise<NotificationRow[]> {
     return notifications.slice(0, limit);
   }
 
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from("notifications")
     .select("id, title, body, read, created_at")
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(Math.min(Math.max(limit, 1), 20));
 
   if (error || !data) {
     return notifications.slice(0, limit);

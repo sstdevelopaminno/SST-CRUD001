@@ -1,10 +1,11 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 
 import { resolveRole } from "@/lib/rbac";
 import { createClient } from "@/lib/supabase/server";
 import type { UserProfile } from "@/types";
 
-export async function getSession() {
+export const getAuthUser = cache(async () => {
   const supabase = createClient();
 
   if (!supabase) {
@@ -12,16 +13,21 @@ export async function getSession() {
   }
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
 
-  return session;
-}
+  if (error || !user) {
+    return null;
+  }
+
+  return user;
+});
 
 export async function getUserProfile(): Promise<UserProfile | null> {
-  const session = await getSession();
+  const user = await getAuthUser();
 
-  if (!session?.user) {
+  if (!user) {
     return null;
   }
 
@@ -29,11 +35,11 @@ export async function getUserProfile(): Promise<UserProfile | null> {
 
   if (!supabase) {
     return {
-      id: session.user.id,
-      email: session.user.email ?? "",
-      full_name: (session.user.user_metadata.full_name as string | undefined) ?? "SST User",
-      role: resolveRole(session.user.user_metadata.role as string | undefined),
-      department: (session.user.user_metadata.department as string | undefined) ?? null,
+      id: user.id,
+      email: user.email ?? "",
+      full_name: (user.user_metadata.full_name as string | undefined) ?? "SST User",
+      role: resolveRole(user.user_metadata.role as string | undefined),
+      department: (user.user_metadata.department as string | undefined) ?? null,
       active: true,
     };
   }
@@ -41,16 +47,16 @@ export async function getUserProfile(): Promise<UserProfile | null> {
   const { data } = await supabase
     .from("users")
     .select("id, email, full_name, role, department, active")
-    .eq("id", session.user.id)
+    .eq("id", user.id)
     .single();
 
   if (!data) {
     return {
-      id: session.user.id,
-      email: session.user.email ?? "",
-      full_name: (session.user.user_metadata.full_name as string | undefined) ?? "SST User",
-      role: resolveRole(session.user.user_metadata.role as string | undefined),
-      department: (session.user.user_metadata.department as string | undefined) ?? null,
+      id: user.id,
+      email: user.email ?? "",
+      full_name: (user.user_metadata.full_name as string | undefined) ?? "SST User",
+      role: resolveRole(user.user_metadata.role as string | undefined),
+      department: (user.user_metadata.department as string | undefined) ?? null,
       active: true,
     };
   }

@@ -1,10 +1,10 @@
-﻿"use client";
+"use client";
 
 import { Bell } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 
-import { markAllNotificationsReadAction, markNotificationReadAction } from "@/app/actions/notifications";
+import { getNotificationsAction, markAllNotificationsReadAction, markNotificationReadAction } from "@/app/actions/notifications";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,7 +33,7 @@ interface NotificationLabels {
 
 interface NotificationsMenuProps {
   locale: "en" | "th";
-  initialItems: NotificationItem[];
+  initialItems?: NotificationItem[];
   labels: NotificationLabels;
 }
 
@@ -45,11 +45,34 @@ function formatTime(dateString: string, locale: "en" | "th") {
   }).format(date);
 }
 
-export function NotificationsMenu({ locale, initialItems, labels }: NotificationsMenuProps) {
+export function NotificationsMenu({ locale, initialItems = [], labels }: NotificationsMenuProps) {
   const [items, setItems] = useState<NotificationItem[]>(initialItems);
   const [pending, startTransition] = useTransition();
+  const [isHydrating, setIsHydrating] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(initialItems.length > 0);
 
   const unreadCount = useMemo(() => items.filter((item) => !item.read).length, [items]);
+
+  function loadNotifications() {
+    if (hasLoaded || isHydrating) {
+      return;
+    }
+
+    setIsHydrating(true);
+
+    startTransition(async () => {
+      const result = await getNotificationsAction(10);
+
+      if (result.ok) {
+        setItems(result.items);
+        setHasLoaded(true);
+      } else if (result.message) {
+        toast.error(result.message);
+      }
+
+      setIsHydrating(false);
+    });
+  }
 
   function markOneAsRead(notificationId: string) {
     setItems((current) => current.map((item) => (item.id === notificationId ? { ...item, read: true } : item)));
@@ -76,7 +99,7 @@ export function NotificationsMenu({ locale, initialItems, labels }: Notification
   }
 
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={(open) => open && loadNotifications()}>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2" data-audit-action="open-notifications" data-audit-type="notification">
           <Bell className="h-4 w-4" />
@@ -100,7 +123,9 @@ export function NotificationsMenu({ locale, initialItems, labels }: Notification
           </Button>
         </div>
         <DropdownMenuSeparator />
-        {items.length === 0 ? (
+        {isHydrating ? (
+          <p className="px-3 py-4 text-sm text-muted-foreground">Loading...</p>
+        ) : items.length === 0 ? (
           <p className="px-3 py-4 text-sm text-muted-foreground">{labels.empty}</p>
         ) : (
           <ScrollArea className="h-80">

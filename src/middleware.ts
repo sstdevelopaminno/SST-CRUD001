@@ -77,14 +77,20 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  if (isProtected && session) {
-    const role = resolveRole(session.user.user_metadata.role as string | undefined);
+  if (isProtected && session && modulePath !== "/dashboard") {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!canAccessPath(role, modulePath)) {
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = `/${locale}/dashboard`;
-      redirectUrl.searchParams.set("forbidden", "1");
-      return NextResponse.redirect(redirectUrl);
+    if (user) {
+      const role = resolveRole(user.user_metadata.role as string | undefined);
+
+      if (!canAccessPath(role, modulePath)) {
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.pathname = `/${locale}/dashboard`;
+        redirectUrl.searchParams.set("forbidden", "1");
+        return NextResponse.redirect(redirectUrl);
+      }
     }
   }
 

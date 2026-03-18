@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { BarChart3, Briefcase, ClipboardList, FileText, LayoutDashboard, Settings2, Shield, Users, Wallet } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +36,7 @@ interface SidebarNavProps {
 
 export function SidebarNav({ locale, items, role }: SidebarNavProps) {
   const pathname = usePathname();
+  const router = useRouter();
 
   return (
     <aside className="hidden w-72 shrink-0 border-r bg-card/60 lg:block">
@@ -57,6 +58,9 @@ export function SidebarNav({ locale, items, role }: SidebarNavProps) {
               <Link
                 key={item.key}
                 href={href}
+                prefetch
+                onMouseEnter={() => router.prefetch(href)}
+                onFocus={() => router.prefetch(href)}
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                   isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted",

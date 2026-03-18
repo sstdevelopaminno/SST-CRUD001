@@ -1,4 +1,4 @@
-﻿import { logoutAction } from "@/app/actions/auth";
+import { logoutAction } from "@/app/actions/auth";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { NotificationsMenu } from "@/components/layout/notifications-menu";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -14,17 +14,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { AppLocale } from "@/lib/i18n/config";
 import type { Dictionary } from "@/lib/i18n/get-dictionary";
-import type { NotificationRow } from "@/services/notifications.service";
 
 interface TopbarProps {
   locale: AppLocale;
   dictionary: Dictionary;
   name: string;
   email: string;
-  notifications: NotificationRow[];
 }
 
-export function Topbar({ locale, dictionary, name, email, notifications }: TopbarProps) {
+export function Topbar({ locale, dictionary, name, email }: TopbarProps) {
   const initials = name
     .split(" ")
     .slice(0, 2)
@@ -42,7 +40,6 @@ export function Topbar({ locale, dictionary, name, email, notifications }: Topba
         <LanguageSwitcher locale={locale} />
         <NotificationsMenu
           locale={locale}
-          initialItems={notifications}
           labels={{
             title: dictionary.topbar.notifications,
             empty: dictionary.topbar.noNotifications,

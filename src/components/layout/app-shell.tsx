@@ -6,7 +6,6 @@ import { NAV_ITEMS } from "@/lib/constants/routes";
 import type { AppLocale } from "@/lib/i18n/config";
 import type { Dictionary } from "@/lib/i18n/get-dictionary";
 import { hasPermission } from "@/lib/rbac";
-import { getNotifications } from "@/services/notifications.service";
 import type { UserProfile } from "@/types";
 
 interface AppShellProps {
@@ -17,7 +16,7 @@ interface AppShellProps {
   children: React.ReactNode;
 }
 
-export async function AppShell({ locale, dictionary, user, featureMap, children }: AppShellProps) {
+export function AppShell({ locale, dictionary, user, featureMap, children }: AppShellProps) {
   const navItems = NAV_ITEMS.filter((item) => featureMap[item.featureFlag] !== false && hasPermission(user.role, item.permission)).map((item) => ({
     ...item,
     label:
@@ -26,14 +25,12 @@ export async function AppShell({ locale, dictionary, user, featureMap, children 
         : dictionary.nav[item.key as Exclude<typeof item.key, "it-panel">],
   }));
 
-  const notifications = await getNotifications(10);
-
   return (
     <div className="min-h-screen bg-background">
       <div className="flex min-h-screen">
         <SidebarNav locale={locale} items={navItems} role={user.role} />
         <div className="flex min-h-screen flex-1 flex-col">
-          <Topbar locale={locale} dictionary={dictionary} name={user.full_name} email={user.email} notifications={notifications} />
+          <Topbar locale={locale} dictionary={dictionary} name={user.full_name} email={user.email} />
           <main className="flex-1 p-4 lg:p-6">{children}</main>
         </div>
       </div>

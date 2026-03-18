@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 import { revalidatePath } from "next/cache";
 
@@ -8,7 +8,7 @@ import { createInAppNotification } from "@/lib/notifications";
 import { createClient } from "@/lib/supabase/server";
 
 export async function uploadDocumentAction(formData: FormData) {
-  await assertPermission("documents:view");
+  const user = await assertPermission("documents:view");
 
   const file = formData.get("file") as File | null;
   const title = (formData.get("title") as string | null) ?? "Untitled";
@@ -23,7 +23,6 @@ export async function uploadDocumentAction(formData: FormData) {
     return { ok: false, message: "Supabase is not configured" };
   }
 
-  const user = await assertPermission("documents:view");
   const filePath = `${user.id}/${Date.now()}-${file.name}`;
 
   const { error: uploadError } = await supabase.storage.from("documents").upload(filePath, file, {
@@ -51,12 +50,12 @@ export async function uploadDocumentAction(formData: FormData) {
     return { ok: false, message: insertError.message };
   }
 
-  await logAuditEvent({
+  void logAuditEvent({
     action_type: "document_uploaded",
     entity_type: "documents",
     entity_id: insertedDocument?.id ?? filePath,
     metadata: { title, size: file.size, type: file.type },
-  });
+  }).catch(() => undefined);
 
   revalidatePath("/documents");
 
@@ -88,18 +87,18 @@ export async function saveSignatureAction(payload: {
     return { ok: false, message: error.message };
   }
 
-  await logAuditEvent({
+  void logAuditEvent({
     action_type: "document_signed",
     entity_type: "documents",
     entity_id: payload.document_id,
-  });
+  }).catch(() => undefined);
 
   if (document?.uploaded_by && document.uploaded_by !== user.id) {
-    await createInAppNotification(
+    void createInAppNotification(
       document.uploaded_by,
       "Document signed",
       `${document.title} has been signed by ${user.full_name}.`,
-    );
+    ).catch(() => undefined);
   }
 
   return { ok: true, message: "Signed" };

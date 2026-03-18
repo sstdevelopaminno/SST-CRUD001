@@ -1,20 +1,25 @@
 import { createClient } from "@/lib/supabase/server";
 import { approvals } from "@/services/mock-data";
 
-export async function getApprovals() {
+const DEFAULT_LIMIT = 100;
+
+export async function getApprovals(limit = DEFAULT_LIMIT) {
   const supabase = createClient();
 
   if (!supabase) {
-    return approvals;
+    return approvals.slice(0, limit);
   }
+
+  const safeLimit = Math.min(Math.max(limit, 1), 200);
 
   const { data, error } = await supabase
     .from("approvals")
     .select("id, entity_type, entity_id, level, requester_id, approver_id, status, note")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(safeLimit);
 
   if (error || !data) {
-    return approvals;
+    return approvals.slice(0, safeLimit);
   }
 
   return data.map((item) => ({

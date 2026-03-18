@@ -1,14 +1,22 @@
 import { createClient } from "@/lib/supabase/server";
 import { projectBoard } from "@/services/mock-data";
 
-export async function getProjectBoard() {
+const DEFAULT_LIMIT = 120;
+
+export async function getProjectBoard(limit = DEFAULT_LIMIT) {
   const supabase = createClient();
 
   if (!supabase) {
     return projectBoard;
   }
 
-  const { data, error } = await supabase.from("projects").select("id, name, status, due_date, owner_id").order("created_at", { ascending: false });
+  const safeLimit = Math.min(Math.max(limit, 1), 300);
+
+  const { data, error } = await supabase
+    .from("projects")
+    .select("id, name, status, due_date, owner_id")
+    .order("created_at", { ascending: false })
+    .limit(safeLimit);
 
   if (error || !data) {
     return projectBoard;

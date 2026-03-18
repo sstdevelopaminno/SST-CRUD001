@@ -1,7 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { defaultFeatureFlags } from "@/services/mock-data";
 
-export async function getFeatureFlags() {
+const FEATURE_FLAG_CACHE_TTL_MS = 30_000;
+let featureFlagCache: { expiresAt: number; value: Awaited<ReturnType<typeof getFeatureFlagsFromDb>> } | null = null;
+
+async function getFeatureFlagsFromDb() {
   const supabase = createClient();
 
   if (!supabase) {
@@ -15,6 +18,22 @@ export async function getFeatureFlags() {
   }
 
   return data;
+}
+
+export async function getFeatureFlags() {
+  const now = Date.now();
+
+  if (featureFlagCache && featureFlagCache.expiresAt > now) {
+    return featureFlagCache.value;
+  }
+
+  const value = await getFeatureFlagsFromDb();
+  featureFlagCache = {
+    value,
+    expiresAt: now + FEATURE_FLAG_CACHE_TTL_MS,
+  };
+
+  return value;
 }
 
 export async function getEnabledModuleMap() {

@@ -14,13 +14,12 @@ export default async function ProtectedLayout({
   params: { locale: string };
 }) {
   const { locale, dictionary } = await getDictionaryByPath(params.locale);
-  const user = await requireUser(locale);
+
+  const [user, featureMap] = await Promise.all([requireUser(locale), getEnabledModuleMap()]);
 
   if (!user.active) {
     redirect(`/${locale}/login`);
   }
-
-  const featureMap = await getEnabledModuleMap();
 
   return (
     <AppShell locale={locale} dictionary={dictionary} user={user} featureMap={featureMap}>
