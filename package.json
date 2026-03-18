@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "verify:supabase": "node scripts/verify-supabase-schema.mjs",
     "dev:reset": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-reset.ps1",
-    "dev:oneclick": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-oneclick.ps1"
+    "dev:oneclick": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-oneclick.ps1",
+    "vercel:sync": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/vercel-sync-and-deploy.ps1"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
