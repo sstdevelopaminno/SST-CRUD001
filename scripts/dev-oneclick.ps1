@@ -1,4 +1,4 @@
-﻿param(
+param(
   [int]$Port = 3000,
   [string]$LoginPath = '/en/login',
   [switch]$NoBrowser
@@ -45,10 +45,13 @@ foreach ($procId in $listenerPids) {
   cmd /c "taskkill /PID $procId /F" | Out-Null
 }
 
-$nextDir = Join-Path $projectRoot '.next'
-if (Test-Path $nextDir) {
-  Write-Host "[one-click] Clearing .next cache" -ForegroundColor Yellow
-  Remove-Item -Recurse -Force $nextDir -ErrorAction SilentlyContinue
+$cacheDirs = @('.next', '.next-dev')
+foreach ($cache in $cacheDirs) {
+  $cachePath = Join-Path $projectRoot $cache
+  if (Test-Path $cachePath) {
+    Write-Host "[one-click] Clearing $cache" -ForegroundColor Yellow
+    Remove-Item -Recurse -Force $cachePath -ErrorAction SilentlyContinue
+  }
 }
 
 $devCommand = "Set-Location -LiteralPath '$projectRoot'; npm run dev"

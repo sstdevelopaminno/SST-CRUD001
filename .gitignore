@@ -42,3 +42,5 @@ next-env.d.ts
 
 /.next-build/
 !.env.example
+.vercel
+.env*.local

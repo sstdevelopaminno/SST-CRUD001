@@ -13,53 +13,57 @@ function Get-EnvMap {
     if ($_ -match "^\s*$") { return }
     if ($_ -match "^(?<k>[A-Z0-9_]+)=(?<v>.*)$") {
       $k = $matches.k
-      $v = $matches.v.Trim()
+      $v = $matches.v.Trim().TrimEnd("`r", "`n")
       if (($v.StartsWith('"') -and $v.EndsWith('"')) -or ($v.StartsWith("'") -and $v.EndsWith("'"))) {
         $v = $v.Substring(1, $v.Length - 2)
       }
-      $map[$k] = $v
+      $map[$k] = $v.TrimEnd("`r", "`n")
     }
   }
 
   return $map
 }
 
-function Invoke-Cmd {
-  param([string]$Command, [switch]$IgnoreError)
+function Invoke-Vercel {
+  param(
+    [string]$CommandArgs,
+    [switch]$IgnoreError
+  )
 
-  cmd /c $Command
+  $cmd = "vercel $CommandArgs$($script:TokenArg)"
+  $maskedCmd = "vercel $CommandArgs"
+
+  cmd /c $cmd
+
   if ($LASTEXITCODE -ne 0 -and -not $IgnoreError) {
-    throw "Command failed: $Command"
+    throw "Command failed: $maskedCmd"
   }
 }
 
-function Invoke-Vercel {
+function Invoke-VercelWithFileInput {
   param(
-    [string]$Args,
-    [switch]$IgnoreError,
-    [string]$InputValue
+    [string]$CommandArgs,
+    [string]$FilePath,
+    [switch]$IgnoreError
   )
 
-  $cmd = "vercel $Args$($script:TokenArg)"
-  if ($PSBoundParameters.ContainsKey("InputValue")) {
-    $InputValue | cmd /c $cmd
-  }
-  else {
-    cmd /c $cmd
-  }
+  $pipeCmd = "type `"$FilePath`" | vercel $CommandArgs$($script:TokenArg)"
+  $maskedCmd = "vercel $CommandArgs"
+
+  cmd /c $pipeCmd
 
   if ($LASTEXITCODE -ne 0 -and -not $IgnoreError) {
-    throw "Command failed: $cmd"
+    throw "Command failed: $maskedCmd"
   }
 }
 
 function Ensure-VercelAuth {
   if (-not [string]::IsNullOrWhiteSpace($script:VercelToken)) {
-    Invoke-Vercel "whoami"
+    Invoke-Vercel -CommandArgs "whoami"
     return
   }
 
-  Invoke-Vercel "whoami" -IgnoreError
+  Invoke-Vercel -CommandArgs "whoami" -IgnoreError
   if ($LASTEXITCODE -eq 0) {
     return
   }
@@ -82,11 +86,15 @@ function Add-VercelEnv {
   )
 
   # Remove existing value first to avoid interactive overwrite prompt.
-  Invoke-Vercel "env rm $Key $Target -y" -IgnoreError
+  Invoke-Vercel -CommandArgs "env rm $Key $Target -y" -IgnoreError
 
-  Invoke-Vercel "env add $Key $Target" -InputValue $Value
-  if ($LASTEXITCODE -ne 0) {
-    throw "Failed to set $Key for $Target"
+  $tmpFile = New-TemporaryFile
+  try {
+    Set-Content -Path $tmpFile -Value $Value -NoNewline
+    Invoke-VercelWithFileInput -CommandArgs "env add $Key $Target" -FilePath $tmpFile
+  }
+  finally {
+    Remove-Item -Force $tmpFile -ErrorAction SilentlyContinue
   }
 }
 
@@ -124,7 +132,7 @@ Ensure-VercelAuth
 
 if (!(Test-Path ".vercel\project.json")) {
   Write-Host "Linking this folder to Vercel project..."
-  Invoke-Vercel "link --yes"
+  Invoke-Vercel -CommandArgs "link --yes"
 }
 
 $targets = @("production", "preview", "development")
@@ -143,6 +151,6 @@ if ($envMap.ContainsKey("NEXT_PUBLIC_APP_URL") -and -not [string]::IsNullOrWhite
 }
 
 Write-Host "Deploying production..."
-Invoke-Vercel "--prod --yes"
+Invoke-Vercel -CommandArgs "--prod --yes"
 
 Write-Host "Done."
