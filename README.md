@@ -81,6 +81,7 @@ public/
 - `npm run typecheck`
 - `npm run build`
 - `npm run verify:supabase` (checks required tables and RLS health via `schema_healthcheck` RPC)
+- `npm run dev:oneclick` (one-click: stop port 3000 process + clear `.next` + start dev + open Edge at `127.0.0.1`)
 
 ## Deployment
 - Ready for Vercel
