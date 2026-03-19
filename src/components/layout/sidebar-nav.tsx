@@ -2,18 +2,20 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, Briefcase, ClipboardList, FileText, LayoutDashboard, Settings2, Shield, Users, Wallet } from "lucide-react";
+import { BarChart3, Briefcase, ClipboardList, FileText, LayoutDashboard, Settings2, Shield, UserPlus2, Users, Wallet } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-type NavKey = "dashboard" | "crm" | "projects" | "jobs" | "billing" | "documents" | "approvals" | "admin" | "it-panel";
+type NavKey = "dashboard" | "crm" | "projects" | "sales-team" | "jobs" | "billing" | "documents" | "approvals" | "admin" | "it-panel";
 
 const ICONS: Record<NavKey, React.ComponentType<{ className?: string }>> = {
   dashboard: LayoutDashboard,
   crm: Users,
   projects: Briefcase,
+  "sales-team": UserPlus2,
   jobs: ClipboardList,
   billing: Wallet,
   documents: FileText,
@@ -42,6 +44,16 @@ export function SidebarNav({ locale, items, role }: SidebarNavProps) {
     <aside className="hidden w-72 shrink-0 border-r bg-card/60 lg:block">
       <div className="sticky top-0 flex h-screen flex-col p-4">
         <div className="mb-6 rounded-lg border bg-background p-4">
+          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl border bg-muted/30">
+            <Image
+              src="https://vdvpqowmusdgthmotbfe.supabase.co/storage/v1/object/public/sstcrud/A-removebg-preview.png"
+              alt="SST Innovation Logo"
+              width={40}
+              height={40}
+              className="h-10 w-10 object-contain"
+              priority
+            />
+          </div>
           <p className="text-sm font-semibold">SST INNOVATION</p>
           <p className="text-xs text-muted-foreground">Enterprise Backoffice</p>
           <Badge variant="secondary" className="mt-2">

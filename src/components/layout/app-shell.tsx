@@ -22,7 +22,9 @@ export function AppShell({ locale, dictionary, user, featureMap, children }: App
     label:
       item.key === "it-panel"
         ? dictionary.nav.itPanel
-        : dictionary.nav[item.key as Exclude<typeof item.key, "it-panel">],
+        : item.key === "sales-team"
+          ? dictionary.nav.salesTeam
+          : dictionary.nav[item.key as Exclude<typeof item.key, "it-panel" | "sales-team">],
   }));
 
   return (

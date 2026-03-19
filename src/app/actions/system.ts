@@ -5,7 +5,7 @@ import crypto from "crypto";
 import { assertPermission } from "@/lib/auth/permissions";
 import { logAuditEvent } from "@/lib/audit";
 import { env } from "@/lib/env";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { apiConfigSchema, featureFlagSchema } from "@/lib/validators";
 import { testApiConnection } from "@/services/api-config.service";
 
@@ -26,10 +26,10 @@ export async function updateFeatureFlagAction(payload: unknown) {
     return { ok: false, message: "Invalid feature flag payload" };
   }
 
-  const supabase = createClient();
+  const supabase = createServiceClient();
 
   if (!supabase) {
-    return { ok: false, message: "Supabase is not configured" };
+    return { ok: false, message: "Supabase service role is not configured" };
   }
 
   const { error } = await supabase.from("feature_flags").update({ enabled: parsed.data.enabled }).eq("id", parsed.data.id);
@@ -38,12 +38,12 @@ export async function updateFeatureFlagAction(payload: unknown) {
     return { ok: false, message: error.message };
   }
 
-  await logAuditEvent({
+  void logAuditEvent({
     action_type: "feature_flag_updated",
     entity_type: "feature_flags",
     entity_id: parsed.data.id,
     metadata: { enabled: parsed.data.enabled },
-  });
+  }).catch(() => undefined);
 
   return { ok: true, message: "Updated" };
 }
@@ -57,10 +57,10 @@ export async function saveApiConfigAction(payload: unknown) {
     return { ok: false, message: "Invalid API config payload" };
   }
 
-  const supabase = createClient();
+  const supabase = createServiceClient();
 
   if (!supabase) {
-    return { ok: false, message: "Supabase is not configured" };
+    return { ok: false, message: "Supabase service role is not configured" };
   }
 
   const encryptedKey = encryptSecret(parsed.data.api_key);
@@ -87,11 +87,11 @@ export async function saveApiConfigAction(payload: unknown) {
     return { ok: false, message: error.message };
   }
 
-  await logAuditEvent({
+  void logAuditEvent({
     action_type: "api_config_saved",
     entity_type: "api_configs",
     metadata: { name: parsed.data.name, base_url: parsed.data.base_url },
-  });
+  }).catch(() => undefined);
 
   return { ok: true, message: "Saved" };
 }
@@ -101,11 +101,11 @@ export async function testApiConfigAction(payload: { base_url: string; api_key?:
 
   const result = await testApiConnection(payload.base_url, payload.api_key);
 
-  await logAuditEvent({
+  void logAuditEvent({
     action_type: "api_connection_tested",
     entity_type: "api_configs",
     metadata: { base_url: payload.base_url, ok: result.ok, status: result.status },
-  });
+  }).catch(() => undefined);
 
   if (!result.ok) {
     return { ok: false, message: result.message };
@@ -120,10 +120,10 @@ export async function forceOverridePermissionAction(payload: {
 }) {
   await assertPermission("it:manage");
 
-  const supabase = createClient();
+  const supabase = createServiceClient();
 
   if (!supabase) {
-    return { ok: false, message: "Supabase is not configured" };
+    return { ok: false, message: "Supabase service role is not configured" };
   }
 
   const { error } = await supabase
@@ -135,12 +135,12 @@ export async function forceOverridePermissionAction(payload: {
     return { ok: false, message: error.message };
   }
 
-  await logAuditEvent({
+  void logAuditEvent({
     action_type: "force_override_permissions",
     entity_type: "users",
     entity_id: payload.user_id,
     metadata: { role: payload.role },
-  });
+  }).catch(() => undefined);
 
   return { ok: true, message: "Override applied" };
 }

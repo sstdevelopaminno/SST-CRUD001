@@ -1,42 +1,56 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+﻿import { ProjectCommissionSettings, SalesProjectWorkspace } from "@/components/projects/project-commission-settings";
+import { requireUser } from "@/lib/auth/server";
 import { getDictionaryByPath } from "@/lib/i18n/get-dictionary";
-import { getProjectBoard } from "@/services/projects.service";
+import {
+  getProjectCasesPage,
+  getProjectTemplatesPage,
+  getProjectTransfersPage,
+  getSalesProjectWorkspaceData,
+  getTransferApprovalQueueData,
+} from "@/services/projects.service";
 
 export default async function ProjectsPage({ params }: { params: { locale: string } }) {
-  const { dictionary } = await getDictionaryByPath(params.locale);
-  const board = await getProjectBoard();
+  const { locale } = await getDictionaryByPath(params.locale);
+  const user = await requireUser(locale);
+  const canReviewTransfers = user.role === "CEO" || user.role === "MANAGER" || user.role === "HEAD";
 
-  const columns = [
-    { key: "todo", title: "Todo", items: board.todo },
-    { key: "doing", title: "In Progress", items: board.doing },
-    { key: "done", title: "Done", items: board.done },
-  ] as const;
+  const [managementPageData, workspace, reviewQueue] = await Promise.all([
+    user.role === "CEO"
+      ? Promise.all([
+          getProjectTemplatesPage({ pageSize: 10 }),
+          getProjectCasesPage({ pageSize: 10 }),
+          getProjectTransfersPage({ pageSize: 10 }),
+        ])
+      : Promise.resolve(null),
+    user.role !== "CEO" ? getSalesProjectWorkspaceData(user.id) : Promise.resolve(null),
+    canReviewTransfers && user.role !== "CEO" ? getTransferApprovalQueueData() : Promise.resolve([]),
+  ]);
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">{dictionary.projects.title}</h1>
-      <div className="grid gap-4 lg:grid-cols-3">
-        {columns.map((column) => (
-          <Card key={column.key}>
-            <CardHeader>
-              <CardTitle>{column.title}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {column.items.map((item) => (
-                <div key={item.id} className="rounded-lg border p-3">
-                  <p className="font-medium">{item.name}</p>
-                  <p className="text-xs text-muted-foreground">Owner: {item.owner}</p>
-                  <div className="mt-2 flex items-center justify-between">
-                    <Badge variant="outline">{item.id}</Badge>
-                    <p className="text-xs text-muted-foreground">Due {item.due}</p>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {user.role === "CEO" && managementPageData ? (
+        <ProjectCommissionSettings
+          initialProjectsPage={managementPageData[0]}
+          initialCasesPage={managementPageData[1]}
+          initialPendingTransfersPage={managementPageData[2]}
+          locale={locale}
+        />
+      ) : null}
+
+      {user.role !== "CEO" && workspace ? (
+        <SalesProjectWorkspace
+          templates={workspace.templates}
+          myCases={workspace.myCases}
+          myTransfers={workspace.myTransfers}
+          transferTargets={workspace.transferTargets}
+          reviewQueue={reviewQueue}
+          canReviewTransfers={canReviewTransfers}
+          allowCaseCreate={user.role === "STAFF"}
+          locale={locale}
+        />
+      ) : null}
     </div>
   );
 }
+
+
