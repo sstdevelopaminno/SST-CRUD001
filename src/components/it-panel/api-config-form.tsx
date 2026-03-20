@@ -8,7 +8,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-export function ApiConfigForm() {
+interface ApiConfigFormLabels {
+  connectionName: string;
+  baseUrlPlaceholder: string;
+  apiKeyPlaceholder: string;
+  testConnection: string;
+  saveApi: string;
+  apiConfigSaved: string;
+}
+
+interface ApiConfigFormProps {
+  labels: ApiConfigFormLabels;
+}
+
+export function ApiConfigForm({ labels }: ApiConfigFormProps) {
   const [pending, startTransition] = useTransition();
   const [name, setName] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
@@ -29,7 +42,7 @@ export function ApiConfigForm() {
         return;
       }
 
-      toast.success("API configuration saved");
+      toast.success(labels.apiConfigSaved);
       setName("");
       setBaseUrl("");
       setApiKey("");
@@ -55,16 +68,16 @@ export function ApiConfigForm() {
 
   return (
     <div className="space-y-3 rounded-lg border p-4">
-      <Input placeholder="Connection name" value={name} onChange={(event) => setName(event.target.value)} />
-      <Input placeholder="https://api.vendor.com" value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} />
-      <Input placeholder="API Key" value={apiKey} onChange={(event) => setApiKey(event.target.value)} type="password" />
+      <Input placeholder={labels.connectionName} value={name} onChange={(event) => setName(event.target.value)} />
+      <Input placeholder={labels.baseUrlPlaceholder} value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} />
+      <Input placeholder={labels.apiKeyPlaceholder} value={apiKey} onChange={(event) => setApiKey(event.target.value)} type="password" />
       <Textarea value={headers} onChange={(event) => setHeaders(event.target.value)} rows={3} />
       <div className="flex gap-2">
         <Button onClick={onTest} variant="outline" disabled={pending} data-audit-action="test-api-connection" data-audit-type="it-panel">
-          Test Connection
+          {labels.testConnection}
         </Button>
         <Button onClick={onSave} disabled={pending} data-audit-action="save-api-config" data-audit-type="it-panel">
-          Save API
+          {labels.saveApi}
         </Button>
       </div>
     </div>

@@ -8,14 +8,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export function PermissionOverrideForm() {
+interface PermissionOverrideLabels {
+  forceOverrideTitle: string;
+  targetUserUuid: string;
+  userIdRequired: string;
+  applyOverride: string;
+  permissionOverrideApplied: string;
+}
+
+interface PermissionOverrideFormProps {
+  labels: PermissionOverrideLabels;
+}
+
+export function PermissionOverrideForm({ labels }: PermissionOverrideFormProps) {
   const [pending, startTransition] = useTransition();
   const [userId, setUserId] = useState("");
   const [role, setRole] = useState<"CEO" | "MANAGER" | "HEAD" | "STAFF" | "IT">("STAFF");
 
   function submit() {
     if (!userId) {
-      toast.error("User ID is required");
+      toast.error(labels.userIdRequired);
       return;
     }
 
@@ -30,15 +42,15 @@ export function PermissionOverrideForm() {
         return;
       }
 
-      toast.success("Permission override applied");
+      toast.success(labels.permissionOverrideApplied);
       setUserId("");
     });
   }
 
   return (
     <div className="space-y-2 rounded-lg border p-4">
-      <p className="text-sm font-medium">Force Override Permissions</p>
-      <Input placeholder="Target user UUID" value={userId} onChange={(event) => setUserId(event.target.value)} />
+      <p className="text-sm font-medium">{labels.forceOverrideTitle}</p>
+      <Input placeholder={labels.targetUserUuid} value={userId} onChange={(event) => setUserId(event.target.value)} />
       <Select value={role} onValueChange={(value) => setRole(value as typeof role)}>
         <SelectTrigger>
           <SelectValue />
@@ -52,7 +64,7 @@ export function PermissionOverrideForm() {
         </SelectContent>
       </Select>
       <Button onClick={submit} disabled={pending} data-audit-action="force-override-role" data-audit-type="it-panel">
-        Apply Override
+        {labels.applyOverride}
       </Button>
     </div>
   );

@@ -117,32 +117,302 @@ export interface Database {
         Row: {
           id: string;
           name: string;
+          description: string | null;
           customer_id: string | null;
           status: string;
           owner_id: string | null;
           progress: number;
           due_date: string | null;
+          commission_rate: number;
+          active: boolean;
+          is_template: boolean;
+          require_customer_name: boolean;
+          require_customer_phone: boolean;
+          require_customer_address: boolean;
+          require_face_photo: boolean;
+          require_id_card: boolean;
+          require_id_address: boolean;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           name: string;
+          description?: string | null;
           customer_id?: string | null;
           status?: string;
           owner_id?: string | null;
           progress?: number;
           due_date?: string | null;
+          commission_rate?: number;
+          active?: boolean;
+          is_template?: boolean;
+          require_customer_name?: boolean;
+          require_customer_phone?: boolean;
+          require_customer_address?: boolean;
+          require_face_photo?: boolean;
+          require_id_card?: boolean;
+          require_id_address?: boolean;
         };
         Update: {
           name?: string;
+          description?: string | null;
           customer_id?: string | null;
           status?: string;
           owner_id?: string | null;
           progress?: number;
           due_date?: string | null;
+          commission_rate?: number;
+          active?: boolean;
+          is_template?: boolean;
+          require_customer_name?: boolean;
+          require_customer_phone?: boolean;
+          require_customer_address?: boolean;
+          require_face_photo?: boolean;
+          require_id_card?: boolean;
+          require_id_address?: boolean;
         };
       };
-      jobs: {
+      project_cases: {
+        Row: {
+          id: string;
+          project_id: string;
+          customer_id: string | null;
+          customer_name: string | null;
+          customer_phone: string | null;
+          customer_address: string | null;
+          customer_face_photo_path: string | null;
+          customer_id_card_path: string | null;
+          customer_id_address: string | null;
+          opened_by: string;
+          sales_owner_id: string;
+          commission_owner_id: string;
+          commission_rate: number;
+          approval_status: string;
+          lifecycle_status: string;
+          opened_at: string;
+          commission_period_start: string | null;
+          commission_period_end: string | null;
+          commission_payout_window_start: string | null;
+          commission_payout_window_end: string | null;
+          extra_data: Json | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          project_id: string;
+          customer_id?: string | null;
+          customer_name?: string | null;
+          customer_phone?: string | null;
+          customer_address?: string | null;
+          customer_face_photo_path?: string | null;
+          customer_id_card_path?: string | null;
+          customer_id_address?: string | null;
+          opened_by: string;
+          sales_owner_id: string;
+          commission_owner_id: string;
+          commission_rate?: number;
+          approval_status?: string;
+          lifecycle_status?: string;
+          opened_at?: string;
+          commission_period_start?: string | null;
+          commission_period_end?: string | null;
+          commission_payout_window_start?: string | null;
+          commission_payout_window_end?: string | null;
+          extra_data?: Json | null;
+        };
+        Update: {
+          customer_id?: string | null;
+          customer_name?: string | null;
+          customer_phone?: string | null;
+          customer_address?: string | null;
+          customer_face_photo_path?: string | null;
+          customer_id_card_path?: string | null;
+          customer_id_address?: string | null;
+          sales_owner_id?: string;
+          commission_owner_id?: string;
+          commission_rate?: number;
+          approval_status?: string;
+          lifecycle_status?: string;
+          commission_period_start?: string | null;
+          commission_period_end?: string | null;
+          commission_payout_window_start?: string | null;
+          commission_payout_window_end?: string | null;
+          extra_data?: Json | null;
+        };
+      };
+      project_case_transfers: {
+        Row: {
+          id: string;
+          project_case_id: string;
+          from_sales_id: string;
+          to_sales_id: string;
+          reason: string | null;
+          status: string;
+          requested_by: string;
+          approver_id: string | null;
+          approver_role: string | null;
+          approved_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          project_case_id: string;
+          from_sales_id: string;
+          to_sales_id: string;
+          reason?: string | null;
+          status?: string;
+          requested_by: string;
+          approver_id?: string | null;
+          approver_role?: string | null;
+          approved_at?: string | null;
+        };
+        Update: {
+          from_sales_id?: string;
+          to_sales_id?: string;
+          reason?: string | null;
+          status?: string;
+          requested_by?: string;
+          approver_id?: string | null;
+          approver_role?: string | null;
+          approved_at?: string | null;
+        };
+      };
+      sales_profiles: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          employee_code: string | null;
+          full_name: string;
+          phone: string | null;
+          current_address: string | null;
+          id_card_address: string | null;
+          id_card_number: string | null;
+          status: string;
+          start_date: string | null;
+          end_date: string | null;
+          manager_user_id: string | null;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id?: string | null;
+          employee_code?: string | null;
+          full_name: string;
+          phone?: string | null;
+          current_address?: string | null;
+          id_card_address?: string | null;
+          id_card_number?: string | null;
+          status?: string;
+          start_date?: string | null;
+          end_date?: string | null;
+          manager_user_id?: string | null;
+          notes?: string | null;
+          created_by?: string | null;
+        };
+        Update: {
+          user_id?: string | null;
+          employee_code?: string | null;
+          full_name?: string;
+          phone?: string | null;
+          current_address?: string | null;
+          id_card_address?: string | null;
+          id_card_number?: string | null;
+          status?: string;
+          start_date?: string | null;
+          end_date?: string | null;
+          manager_user_id?: string | null;
+          notes?: string | null;
+          created_by?: string | null;
+        };
+      };
+      sales_profile_documents: {
+        Row: {
+          id: string;
+          sales_profile_id: string;
+          document_type: string;
+          file_path: string;
+          file_name: string | null;
+          mime_type: string | null;
+          uploaded_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          sales_profile_id: string;
+          document_type: string;
+          file_path: string;
+          file_name?: string | null;
+          mime_type?: string | null;
+          uploaded_by?: string | null;
+        };
+        Update: {
+          document_type?: string;
+          file_path?: string;
+          file_name?: string | null;
+          mime_type?: string | null;
+          uploaded_by?: string | null;
+        };
+      };
+      sales_commission_cycles: {
+        Row: {
+          id: string;
+          sales_profile_id: string;
+          cycle_label: string | null;
+          period_start: string;
+          period_end: string;
+          payout_window_start: string;
+          payout_window_end: string;
+          gross_sales: number;
+          approved_sales: number;
+          commission_rate_avg: number;
+          commission_amount: number;
+          status: string;
+          submitted_by: string | null;
+          approved_by: string | null;
+          approved_at: string | null;
+          paid_at: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          sales_profile_id: string;
+          cycle_label?: string | null;
+          period_start: string;
+          period_end: string;
+          payout_window_start: string;
+          payout_window_end: string;
+          gross_sales?: number;
+          approved_sales?: number;
+          commission_rate_avg?: number;
+          commission_amount?: number;
+          status?: string;
+          submitted_by?: string | null;
+          approved_by?: string | null;
+          approved_at?: string | null;
+          paid_at?: string | null;
+          notes?: string | null;
+        };
+        Update: {
+          cycle_label?: string | null;
+          period_start?: string;
+          period_end?: string;
+          payout_window_start?: string;
+          payout_window_end?: string;
+          gross_sales?: number;
+          approved_sales?: number;
+          commission_rate_avg?: number;
+          commission_amount?: number;
+          status?: string;
+          submitted_by?: string | null;
+          approved_by?: string | null;
+          approved_at?: string | null;
+          paid_at?: string | null;
+          notes?: string | null;
+        };
+      };      jobs: {
         Row: {
           id: string;
           project_id: string | null;
@@ -175,6 +445,7 @@ export interface Database {
         Row: {
           id: string;
           customer_id: string | null;
+          project_id: string | null;
           invoice_no: string;
           amount: number;
           status: string;
@@ -184,6 +455,7 @@ export interface Database {
         };
         Insert: {
           customer_id?: string | null;
+          project_id?: string | null;
           invoice_no: string;
           amount: number;
           status?: string;
@@ -191,6 +463,7 @@ export interface Database {
         };
         Update: {
           customer_id?: string | null;
+          project_id?: string | null;
           invoice_no?: string;
           amount?: number;
           status?: string;

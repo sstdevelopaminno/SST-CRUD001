@@ -83,6 +83,7 @@ export const defaultFeatureFlags = [
   { id: "8f1f2a51-8b26-4f75-8d3a-3a2f6ea2b8d1", key: "dashboard", module: "dashboard", enabled: true, description: "Main KPI dashboard" },
   { id: "84ebed5d-5683-4be3-a849-ddd95f5938b4", key: "crm", module: "crm", enabled: true, description: "Customer management" },
   { id: "9fcd852f-e7ff-4950-9fc2-52563f7eaf43", key: "projects", module: "projects", enabled: true, description: "Projects module" },
+  { id: "1f2f1aba-b59e-4b57-9804-a7f6a128cd73", key: "sales-team", module: "sales-team", enabled: true, description: "Sales team management" },
   { id: "d3347348-37fa-4a4b-ad74-f5304af35fd2", key: "jobs", module: "jobs", enabled: true, description: "Task tracking" },
   { id: "8f4f9e9d-c04e-43dd-8c8d-3aff342a2e2d", key: "billing", module: "billing", enabled: true, description: "Billing and PO" },
   { id: "7a9e58cb-df17-46e6-abca-31e241d815c3", key: "documents", module: "documents", enabled: true, description: "Document center" },

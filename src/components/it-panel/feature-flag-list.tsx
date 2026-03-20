@@ -14,7 +14,18 @@ interface FeatureFlag {
   description: string | null;
 }
 
-export function FeatureFlagList({ flags }: { flags: FeatureFlag[] }) {
+interface FeatureFlagListLabels {
+  featureFlagUpdated: string;
+  moduleLabels: Record<string, string>;
+  moduleDescriptions: Record<string, string>;
+}
+
+interface FeatureFlagListProps {
+  flags: FeatureFlag[];
+  labels: FeatureFlagListLabels;
+}
+
+export function FeatureFlagList({ flags, labels }: FeatureFlagListProps) {
   const [pending, startTransition] = useTransition();
 
   function onToggle(id: string, enabled: boolean) {
@@ -26,28 +37,33 @@ export function FeatureFlagList({ flags }: { flags: FeatureFlag[] }) {
         return;
       }
 
-      toast.success("Feature flag updated");
+      toast.success(labels.featureFlagUpdated);
     });
   }
 
   return (
     <div className="space-y-3">
-      {flags.map((flag) => (
-        <div key={flag.id} className="flex items-center justify-between rounded-lg border p-3">
-          <div>
-            <p className="font-medium">{flag.module}</p>
-            <p className="text-xs text-muted-foreground">{flag.description ?? flag.key}</p>
+      {flags.map((flag) => {
+        const title = labels.moduleLabels[flag.key] ?? labels.moduleLabels[flag.module] ?? flag.module;
+        const description = labels.moduleDescriptions[flag.key] ?? labels.moduleDescriptions[flag.module] ?? flag.description ?? flag.key;
+
+        return (
+          <div key={flag.id} className="flex items-center justify-between rounded-lg border p-3">
+            <div>
+              <p className="font-medium">{title}</p>
+              <p className="text-xs text-muted-foreground">{description}</p>
+            </div>
+            <Switch
+              checked={flag.enabled}
+              disabled={pending}
+              onCheckedChange={(checked) => onToggle(flag.id, checked)}
+              data-audit-action="toggle-feature-flag"
+              data-audit-type="it-panel"
+              data-audit-id={flag.key}
+            />
           </div>
-          <Switch
-            checked={flag.enabled}
-            disabled={pending}
-            onCheckedChange={(checked) => onToggle(flag.id, checked)}
-            data-audit-action="toggle-feature-flag"
-            data-audit-type="it-panel"
-            data-audit-id={flag.key}
-          />
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
