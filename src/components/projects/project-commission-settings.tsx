@@ -2,17 +2,18 @@
 
 import { type ReactNode, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { ClipboardList, FolderCog, ListChecks, RefreshCw, X } from "lucide-react";
+import { ClipboardList, FolderCog, ListChecks, RefreshCw, TriangleAlert, Trash2, X } from "lucide-react";
 
 import {
   createProjectAction,
   createProjectCaseAction,
+  deleteProjectTemplateAction,
   getProjectCasesPageAction,
   getProjectTemplatesPageAction,
   getProjectTransfersPageAction,
   requestProjectTransferAction,
   reviewProjectTransferAction,
-  updateProjectCommissionRateAction,
+  updateProjectTemplateAction,
 } from "@/app/actions/projects";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,13 @@ interface CreateProjectForm {
   requireIdAddress: boolean;
 }
 
+interface ProjectRowEditDraft {
+  name: string;
+  status: CreateProjectForm["status"];
+  dueDate: string;
+  active: boolean;
+}
+
 interface TransferDraft {
   toSalesId: string;
   reason: string;
@@ -94,15 +102,25 @@ function localizeStatus(status: string, locale: string) {
 
   if (locale === "th") {
     if (normalized === "done") return "เสร็จแล้ว";
-    if (normalized === "in_progress" || normalized === "doing") return "กำลังดำเนินการ";
+    if (normalized === "in_progress") return "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e14\u0e33\u0e40\u0e19\u0e34\u0e19\u0e01\u0e32\u0e23";
+    if (normalized === "doing") return "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e17\u0e33\u0e07\u0e32\u0e19";
     if (normalized === "active") return "เปิดใช้งาน";
     return "รอดำเนินการ";
   }
 
   if (normalized === "done") return "Done";
-  if (normalized === "in_progress" || normalized === "doing") return "In Progress";
+  if (normalized === "in_progress") return "In Progress";
+  if (normalized === "doing") return "Doing";
   if (normalized === "active") return "Active";
   return "Todo";
+}
+
+function toEditableStatus(status: string): CreateProjectForm["status"] {
+  if (status === "todo" || status === "in_progress" || status === "doing" || status === "done" || status === "active") {
+    return status;
+  }
+
+  return "todo";
 }
 
 function localizeApprovalStatus(status: string, locale: string) {
@@ -201,10 +219,15 @@ export function ProjectCommissionSettings({ initialProjectsPage, initialCasesPag
     Object.fromEntries(initialProjectsPage.items.map((item) => [item.id, String(item.commissionRate)])),
   );
   const [savingProjectId, setSavingProjectId] = useState<string | null>(null);
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
+  const [projectDeleteTarget, setProjectDeleteTarget] = useState<ProjectTemplateItem | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [projectEditDrafts, setProjectEditDrafts] = useState<Record<string, ProjectRowEditDraft>>({});
   const [reviewingTransferId, setReviewingTransferId] = useState<string | null>(null);
   const [activeModal, setActiveModal] = useState<"manage" | "templates" | "cases" | "transfers" | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const modalCloseTimerRef = useRef<number | null>(null);
+  const deleteModalCloseTimerRef = useRef<number | null>(null);
 
   const t =
     locale === "th"
@@ -297,8 +320,16 @@ export function ProjectCommissionSettings({ initialProjectsPage, initialCasesPag
           close: "ปิด",
           actions: "การทำงาน",
           noData: "ยังไม่มีข้อมูล",
-          noPending: "ไม่มีคำขอค้าง",
-          saving: "กำลังบันทึก...",
+          noPending: "\u0e44\u0e21\u0e48\u0e21\u0e35\u0e04\u0e33\u0e02\u0e2d\u0e04\u0e49\u0e32\u0e07",
+          saving: "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01...",
+          edit: "\u0e41\u0e01\u0e49\u0e44\u0e02",
+          cancel: "\u0e22\u0e01\u0e40\u0e25\u0e34\u0e01",
+          delete: "\u0e25\u0e1a",
+          deleting: "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e25\u0e1a...",
+          confirmDelete: "\u0e22\u0e37\u0e19\u0e22\u0e31\u0e19\u0e25\u0e1a\u0e42\u0e1b\u0e23\u0e40\u0e08\u0e15\u0e19\u0e35\u0e49\u0e43\u0e0a\u0e48\u0e2b\u0e23\u0e37\u0e2d\u0e44\u0e21\u0e48?",
+          deleteTitle: "\u0e22\u0e37\u0e19\u0e22\u0e31\u0e19\u0e01\u0e32\u0e23\u0e25\u0e1a\u0e42\u0e1b\u0e23\u0e40\u0e08\u0e15",
+          deleteDescription: "\u0e23\u0e32\u0e22\u0e01\u0e32\u0e23\u0e19\u0e35\u0e49\u0e08\u0e30\u0e16\u0e39\u0e01\u0e19\u0e33\u0e2d\u0e2d\u0e01\u0e08\u0e32\u0e01\u0e23\u0e32\u0e22\u0e01\u0e32\u0e23\u0e42\u0e1b\u0e23\u0e40\u0e08\u0e15",
+          deleteConfirm: "\u0e25\u0e1a\u0e42\u0e1b\u0e23\u0e40\u0e08\u0e15",
           search: "\u0e04\u0e49\u0e19\u0e2b\u0e32",
           searchTemplates: "\u0e04\u0e49\u0e19\u0e2b\u0e32\u0e42\u0e1b\u0e23\u0e40\u0e08\u0e15",
           searchCases: "\u0e04\u0e49\u0e19\u0e2b\u0e32\u0e40\u0e04\u0e2a",
@@ -320,6 +351,14 @@ export function ProjectCommissionSettings({ initialProjectsPage, initialCasesPag
           noData: "No data",
           noPending: "No pending requests",
           saving: "Saving...",
+          edit: "Edit",
+          cancel: "Cancel",
+          delete: "Delete",
+          deleting: "Deleting...",
+          confirmDelete: "Delete this template?",
+          deleteTitle: "Confirm template deletion",
+          deleteDescription: "This template will be removed from the project list.",
+          deleteConfirm: "Delete template",
           search: "Search",
           searchTemplates: "Search templates",
           searchCases: "Search cases",
@@ -529,19 +568,31 @@ export function ProjectCommissionSettings({ initialProjectsPage, initialCasesPag
       if (modalCloseTimerRef.current) {
         clearTimeout(modalCloseTimerRef.current);
       }
+      if (deleteModalCloseTimerRef.current) {
+        clearTimeout(deleteModalCloseTimerRef.current);
+      }
     };
   }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && activeModal) {
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      if (projectDeleteTarget) {
+        closeDeleteModal();
+        return;
+      }
+
+      if (activeModal) {
         closeModal();
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeModal]);
+  }, [activeModal, projectDeleteTarget]);
 
   function openModal(modal: Exclude<typeof activeModal, null>) {
     if (activeModal === modal && modalOpen) {
@@ -562,20 +613,25 @@ export function ProjectCommissionSettings({ initialProjectsPage, initialCasesPag
     modalCloseTimerRef.current = window.setTimeout(() => setActiveModal(null), 260);
   }
 
+  function closeDeleteModal() {
+    setDeleteModalOpen(false);
+    deleteModalCloseTimerRef.current = window.setTimeout(() => setProjectDeleteTarget(null), 260);
+  }
+
   function resetCreateForm() {
     setCreateForm(EMPTY_CREATE_FORM);
   }
 
   function onAddProject() {
     if (!createForm.name.trim()) {
-      toast.error(locale === "th" ? "กรุณากรอกชื่อโครงการ" : "Please enter project name");
+      toast.error(locale === "th" ? "\u0e01\u0e23\u0e38\u0e13\u0e32\u0e01\u0e23\u0e2d\u0e01\u0e0a\u0e37\u0e48\u0e2d\u0e42\u0e04\u0e23\u0e07\u0e01\u0e32\u0e23" : "Please enter project name");
       return;
     }
 
     const rate = normalizeInputRate(createForm.commissionRate);
 
     if (rate === null) {
-      toast.error(locale === "th" ? "กรุณากรอกเปอร์เซ็นต์ระหว่าง 0 ถึง 100" : "Please enter rate between 0 and 100");
+      toast.error(locale === "th" ? "\u0e01\u0e23\u0e38\u0e13\u0e32\u0e01\u0e23\u0e2d\u0e01\u0e40\u0e1b\u0e2d\u0e23\u0e4c\u0e40\u0e0b\u0e47\u0e19\u0e15\u0e4c\u0e23\u0e30\u0e2b\u0e27\u0e48\u0e32\u0e07 0 \u0e16\u0e36\u0e07 100" : "Please enter rate between 0 and 100");
       return;
     }
 
@@ -632,41 +688,154 @@ export function ProjectCommissionSettings({ initialProjectsPage, initialCasesPag
       setDraftRates((current) => ({ ...current, [newProject.id]: String(newProject.commissionRate) }));
       resetCreateForm();
       toast.success(locale === "th" ? "เพิ่มโปรเจตสำเร็จ" : "Template created");
+      closeModal();
     });
   }
 
-  function onSaveCommission(projectId: string) {
-    const rate = normalizeInputRate(draftRates[projectId] ?? "");
+  function onStartProjectEdit(project: ProjectTemplateItem) {
+    setProjectEditDrafts((current) => ({
+      ...current,
+      [project.id]: {
+        name: project.name,
+        status: toEditableStatus(project.status),
+        dueDate: project.dueDate ?? "",
+        active: project.active,
+      },
+    }));
+
+    setDraftRates((current) => ({
+      ...current,
+      [project.id]: current[project.id] ?? String(project.commissionRate),
+    }));
+  }
+
+  function onCancelProjectEdit(projectId: string) {
+    setProjectEditDrafts((current) => {
+      const next = { ...current };
+      delete next[projectId];
+      return next;
+    });
+  }
+
+  function onSaveProjectRow(project: ProjectTemplateItem) {
+    const editDraft = projectEditDrafts[project.id];
+    const rate = normalizeInputRate(draftRates[project.id] ?? String(project.commissionRate));
 
     if (rate === null) {
-      toast.error(locale === "th" ? "กรุณากรอกเปอร์เซ็นต์ระหว่าง 0 ถึง 100" : "Please enter rate between 0 and 100");
+      toast.error(locale === "th" ? "\u0e01\u0e23\u0e38\u0e13\u0e32\u0e01\u0e23\u0e2d\u0e01\u0e40\u0e1b\u0e2d\u0e23\u0e4c\u0e40\u0e0b\u0e47\u0e19\u0e15\u0e4c\u0e23\u0e30\u0e2b\u0e27\u0e48\u0e32\u0e07 0 \u0e16\u0e36\u0e07 100" : "Please enter rate between 0 and 100");
       return;
     }
 
-    setSavingProjectId(projectId);
+    const name = (editDraft?.name ?? project.name).trim();
+
+    if (!name) {
+      toast.error(locale === "th" ? "\u0e01\u0e23\u0e38\u0e13\u0e32\u0e01\u0e23\u0e2d\u0e01\u0e0a\u0e37\u0e48\u0e2d\u0e42\u0e04\u0e23\u0e07\u0e01\u0e32\u0e23" : "Please enter project name");
+      return;
+    }
+
+    setSavingProjectId(project.id);
 
     startTransition(async () => {
-      const result = await updateProjectCommissionRateAction({ project_id: projectId, commission_rate: rate });
+      const result = await updateProjectTemplateAction({
+        project_id: project.id,
+        name,
+        description: project.description || null,
+        status: editDraft?.status ?? toEditableStatus(project.status),
+        due_date: (editDraft?.dueDate ?? project.dueDate ?? "") || null,
+        commission_rate: rate,
+        active: editDraft?.active ?? project.active,
+        require_customer_name: project.requirements.fullName,
+        require_customer_phone: project.requirements.phone,
+        require_customer_address: project.requirements.address,
+        require_face_photo: project.requirements.facePhoto,
+        require_id_card: project.requirements.idCard,
+        require_id_address: project.requirements.idAddress,
+      });
 
-      if (!result.ok) {
-        toast.error(result.message ?? (locale === "th" ? "ไม่สามารถบันทึกได้" : "Unable to save"));
+      if (!result.ok || !result.project) {
+        toast.error(result.message ?? (locale === "th" ? "\u0e44\u0e21\u0e48\u0e2a\u0e32\u0e21\u0e32\u0e23\u0e16\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e44\u0e14\u0e49" : "Unable to save"));
         setSavingProjectId(null);
         return;
       }
 
       setProjects((current) =>
         current.map((item) =>
-          item.id === projectId
+          item.id === project.id
             ? {
                 ...item,
-                commissionRate: result.project?.commission_rate ?? rate,
+                name: result.project?.name ?? name,
+                description: result.project?.description ?? item.description,
+                status: result.project?.status ?? item.status,
+                dueDate: result.project?.due_date ?? null,
+                commissionRate: Number(result.project?.commission_rate ?? rate),
+                active: Boolean(result.project?.active ?? item.active),
+                updatedAt: result.project?.updated_at ?? item.updatedAt,
               }
             : item,
         ),
       );
 
+      setProjectEditDrafts((current) => {
+        const next = { ...current };
+        delete next[project.id];
+        return next;
+      });
+
+      setDraftRates((current) => ({
+        ...current,
+        [project.id]: String(Number(result.project?.commission_rate ?? rate)),
+      }));
+
       setSavingProjectId(null);
-      toast.success(locale === "th" ? "บันทึกสำเร็จ" : "Saved");
+      toast.success(locale === "th" ? "\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08" : "Saved");
+    });
+  }
+
+  function onRequestDeleteProjectRow(project: ProjectTemplateItem) {
+    if (deleteModalCloseTimerRef.current) {
+      clearTimeout(deleteModalCloseTimerRef.current);
+    }
+
+    setProjectDeleteTarget(project);
+    requestAnimationFrame(() => setDeleteModalOpen(true));
+  }
+
+  function confirmDeleteProjectRow() {
+    if (!projectDeleteTarget) {
+      return;
+    }
+
+    const target = projectDeleteTarget;
+    setDeletingProjectId(target.id);
+
+    startTransition(async () => {
+      const result = await deleteProjectTemplateAction({ project_id: target.id });
+
+      if (!result.ok) {
+        toast.error(result.message ?? (locale === "th" ? "\u0e44\u0e21\u0e48\u0e2a\u0e32\u0e21\u0e32\u0e23\u0e16\u0e25\u0e1a\u0e42\u0e1b\u0e23\u0e40\u0e08\u0e15\u0e44\u0e14\u0e49" : "Unable to delete template"));
+        setDeletingProjectId(null);
+        return;
+      }
+
+      setProjects((current) => current.filter((item) => item.id !== target.id));
+      setProjectEditDrafts((current) => {
+        const next = { ...current };
+        delete next[target.id];
+        return next;
+      });
+      setDraftRates((current) => {
+        const next = { ...current };
+        delete next[target.id];
+        return next;
+      });
+
+      if (savingProjectId === target.id) {
+        setSavingProjectId(null);
+      }
+
+      setDeletingProjectId(null);
+      closeDeleteModal();
+      toast.success(locale === "th" ? "\u0e25\u0e1a\u0e42\u0e1b\u0e23\u0e40\u0e08\u0e15\u0e40\u0e23\u0e35\u0e22\u0e1a\u0e23\u0e49\u0e2d\u0e22\u0e41\u0e25\u0e49\u0e27" : "Template deleted");
     });
   }
 
@@ -821,22 +990,197 @@ export function ProjectCommissionSettings({ initialProjectsPage, initialCasesPag
             {pagedTemplates.items.length === 0 ? (
               <TableRow><TableCell colSpan={7} className="text-center text-sm text-muted-foreground">{menu.noData}</TableCell></TableRow>
             ) : (
-              pagedTemplates.items.map((project) => (
-                <TableRow key={project.id}>
-                  <TableCell>{project.name}</TableCell>
-                  <TableCell><Badge variant={statusBadgeVariant(project.status)}>{localizeStatus(project.status, locale)}</Badge></TableCell>
-                  <TableCell>{formatDate(project.dueDate, locale)}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Input type="number" min={0} max={100} step="0.01" value={draftRates[project.id] ?? String(project.commissionRate)} onChange={(event) => setDraftRates((current) => ({ ...current, [project.id]: event.target.value }))} />
-                      <span className="text-sm">%</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="max-w-[240px] text-xs text-muted-foreground">{requirementsSummary(project, locale)}</TableCell>
-                  <TableCell><Badge variant={project.active ? "success" : "outline"}>{project.active ? "ON" : "OFF"}</Badge></TableCell>
-                  <TableCell><Button type="button" size="sm" disabled={pending} onClick={() => onSaveCommission(project.id)}>{pending && savingProjectId === project.id ? menu.saving : t.save}</Button></TableCell>
-                </TableRow>
-              ))
+              pagedTemplates.items.map((project) => {
+                const editDraft = projectEditDrafts[project.id];
+                const isEditing = Boolean(editDraft);
+                const rateValue = draftRates[project.id] ?? String(project.commissionRate);
+
+                return (
+                  <TableRow key={project.id}>
+                    <TableCell>
+                      {isEditing ? (
+                        <Input
+                          value={editDraft?.name ?? project.name}
+                          onChange={(event) =>
+                            setProjectEditDrafts((current) => ({
+                              ...current,
+                              [project.id]: {
+                                ...(current[project.id] ?? {
+                                  name: project.name,
+                                  status: toEditableStatus(project.status),
+                                  dueDate: project.dueDate ?? "",
+                                  active: project.active,
+                                }),
+                                name: event.target.value,
+                              },
+                            }))
+                          }
+                        />
+                      ) : (
+                        project.name
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <Select
+                          value={editDraft?.status ?? toEditableStatus(project.status)}
+                          onValueChange={(value) =>
+                            setProjectEditDrafts((current) => ({
+                              ...current,
+                              [project.id]: {
+                                ...(current[project.id] ?? {
+                                  name: project.name,
+                                  status: toEditableStatus(project.status),
+                                  dueDate: project.dueDate ?? "",
+                                  active: project.active,
+                                }),
+                                status: value as CreateProjectForm["status"],
+                              },
+                            }))
+                          }
+                        >
+                          <SelectTrigger className="w-[170px]">
+                            <SelectValue placeholder={t.status} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {statusOptions.map((item) => (
+                              <SelectItem key={item.value} value={item.value}>
+                                {item.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Badge variant={statusBadgeVariant(project.status)}>{localizeStatus(project.status, locale)}</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <Input
+                          type="date"
+                          value={editDraft?.dueDate ?? project.dueDate ?? ""}
+                          onChange={(event) =>
+                            setProjectEditDrafts((current) => ({
+                              ...current,
+                              [project.id]: {
+                                ...(current[project.id] ?? {
+                                  name: project.name,
+                                  status: toEditableStatus(project.status),
+                                  dueDate: project.dueDate ?? "",
+                                  active: project.active,
+                                }),
+                                dueDate: event.target.value,
+                              },
+                            }))
+                          }
+                          className="w-[165px]"
+                        />
+                      ) : (
+                        formatDate(project.dueDate, locale)
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {isEditing ? (
+                          <>
+                            <Input
+                              className="w-[120px]"
+                              type="number"
+                              min={0}
+                              max={100}
+                              step="0.01"
+                              value={rateValue}
+                              onChange={(event) =>
+                                setDraftRates((current) => ({
+                                  ...current,
+                                  [project.id]: event.target.value,
+                                }))
+                              }
+                            />
+                            <span className="text-sm">%</span>
+                          </>
+                        ) : (
+                          <span>{project.commissionRate}%</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-[240px] text-xs text-muted-foreground">{requirementsSummary(project, locale)}</TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(editDraft?.active ?? project.active)}
+                            onChange={(event) =>
+                              setProjectEditDrafts((current) => ({
+                                ...current,
+                                [project.id]: {
+                                  ...(current[project.id] ?? {
+                                    name: project.name,
+                                    status: toEditableStatus(project.status),
+                                    dueDate: project.dueDate ?? "",
+                                    active: project.active,
+                                  }),
+                                  active: event.target.checked,
+                                },
+                              }))
+                            }
+                          />
+                          {editDraft?.active ?? project.active ? "ON" : "OFF"}
+                        </label>
+                      ) : (
+                        <Badge variant={project.active ? "success" : "outline"}>{project.active ? "ON" : "OFF"}</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-2">
+                        {isEditing ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={pending}
+                            onClick={() => onSaveProjectRow(project)}
+                          >
+                            {pending && savingProjectId === project.id ? menu.saving : t.save}
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={pending}
+                            onClick={() => onStartProjectEdit(project)}
+                          >
+                            {menu.edit}
+                          </Button>
+                        )}
+
+                        {isEditing ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={pending}
+                            onClick={() => onCancelProjectEdit(project.id)}
+                          >
+                            {menu.cancel}
+                          </Button>
+                        ) : null}
+
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={pending}
+                          onClick={() => onRequestDeleteProjectRow(project)}
+                        >
+                          {pending && deletingProjectId === project.id ? menu.deleting : menu.delete}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -1104,6 +1448,46 @@ export function ProjectCommissionSettings({ initialProjectsPage, initialCasesPag
               </Button>
             </div>
             <div className={`mt-4 ${modalMeta.contentMaxHeightClass} overflow-y-auto px-1 pt-1 pb-1`}>{modalMeta.content}</div>
+          </div>
+        </div>
+      ) : null}
+
+      {projectDeleteTarget ? (
+        <div
+          className={`fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4 transition-opacity duration-200 ${
+            deleteModalOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+          }`}
+          onClick={closeDeleteModal}
+        >
+          <div
+            className={`w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl transform-gpu transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+              deleteModalOpen ? "translate-y-0 scale-100 opacity-100" : "translate-y-2 scale-95 opacity-0"
+            }`}
+            role="dialog"
+            aria-modal="true"
+            aria-label={menu.deleteTitle}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="rounded-full bg-rose-100 p-2 text-rose-600">
+                <TriangleAlert className="h-5 w-5" />
+              </div>
+              <div>
+                <h4 className="text-lg font-semibold text-slate-900">{menu.deleteTitle}</h4>
+                <p className="mt-1 text-sm text-slate-600">
+                  {menu.deleteDescription} <span className="font-semibold text-slate-800">{projectDeleteTarget.name}</span>
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={closeDeleteModal} disabled={pending}>
+                {menu.cancel}
+              </Button>
+              <Button type="button" variant="destructive" onClick={confirmDeleteProjectRow} disabled={pending}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                {pending && deletingProjectId === projectDeleteTarget.id ? menu.deleting : menu.deleteConfirm}
+              </Button>
+            </div>
           </div>
         </div>
       ) : null}

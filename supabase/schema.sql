@@ -335,6 +335,8 @@ create or replace function public.get_my_role()
 returns text
 language sql
 stable
+security definer
+set search_path = public, pg_catalog
 as $$
   select coalesce((select role from public.users where id = auth.uid()), 'STAFF');
 $$;

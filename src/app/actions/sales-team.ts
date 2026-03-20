@@ -40,6 +40,20 @@ const createCycleSchema = z.object({
   notes: z.string().max(1000).optional().nullable(),
 });
 
+const updateProfileSchema = z.object({
+  profile_id: z.string().uuid(),
+  user_id: z.string().uuid().optional().nullable(),
+  employee_code: z.string().max(50).optional().nullable(),
+  full_name: z.string().min(2).max(200),
+  phone: z.string().max(50).optional().nullable(),
+  manager_user_id: z.string().uuid().optional().nullable(),
+  status: z.enum(["active", "inactive", "suspended"]).default("active"),
+});
+
+const deleteProfileSchema = z.object({
+  profile_id: z.string().uuid(),
+});
+
 const updateCycleStatusSchema = z.object({
   cycle_id: z.string().uuid(),
   status: cycleStatusSchema,
@@ -278,6 +292,111 @@ export async function createSalesCommissionCycleAction(payload: unknown) {
   revalidatePath("/sales-team");
 
   return { ok: true, cycle_id: data.id };
+}
+
+export async function updateSalesProfileAction(payload: unknown) {
+  const actor = await assertPermission("sales:manage");
+  const supabase = createClient();
+
+  if (!supabase) {
+    return { ok: false, message: "Supabase is not configured" };
+  }
+
+  const rawPayload = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+
+  const parsed = updateProfileSchema.safeParse({
+    profile_id: String(rawPayload.profile_id ?? "").trim(),
+    user_id: normalizeOptionalText(String(rawPayload.user_id ?? "")),
+    employee_code: normalizeOptionalText(String(rawPayload.employee_code ?? "")),
+    full_name: String(rawPayload.full_name ?? "").trim(),
+    phone: normalizeOptionalText(String(rawPayload.phone ?? "")),
+    manager_user_id: normalizeOptionalText(String(rawPayload.manager_user_id ?? "")),
+    status: String(rawPayload.status ?? "active").trim(),
+  });
+
+  if (!parsed.success) {
+    return { ok: false, message: "Invalid sales profile payload" };
+  }
+
+  const { data, error } = await supabase
+    .from("sales_profiles")
+    .update({
+      user_id: parsed.data.user_id,
+      employee_code: parsed.data.employee_code,
+      full_name: parsed.data.full_name,
+      phone: parsed.data.phone,
+      manager_user_id: parsed.data.manager_user_id,
+      status: parsed.data.status,
+    })
+    .eq("id", parsed.data.profile_id)
+    .select("id, full_name")
+    .single();
+
+  if (error || !data) {
+    return { ok: false, message: normalizeSchemaMessage(error?.message ?? "Unable to update sales profile") };
+  }
+
+  void logAuditEvent({
+    action_type: "sales_profile_updated",
+    entity_type: "sales_profiles",
+    entity_id: data.id,
+    metadata: {
+      actor_id: actor.id,
+      full_name: data.full_name,
+    },
+  }).catch(() => undefined);
+
+  revalidatePath("/sales-team");
+
+  return { ok: true, profile_id: data.id };
+}
+
+export async function deleteSalesProfileAction(payload: unknown) {
+  const actor = await assertPermission("sales:manage");
+  const supabase = createClient();
+
+  if (!supabase) {
+    return { ok: false, message: "Supabase is not configured" };
+  }
+
+  const rawPayload = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+  const parsed = deleteProfileSchema.safeParse({
+    profile_id: String(rawPayload.profile_id ?? "").trim(),
+  });
+
+  if (!parsed.success) {
+    return { ok: false, message: "Invalid sales profile payload" };
+  }
+
+  const { data: currentProfile, error: profileError } = await supabase
+    .from("sales_profiles")
+    .select("id, full_name")
+    .eq("id", parsed.data.profile_id)
+    .single();
+
+  if (profileError || !currentProfile) {
+    return { ok: false, message: normalizeSchemaMessage(profileError?.message ?? "Unable to find sales profile") };
+  }
+
+  const { error } = await supabase.from("sales_profiles").delete().eq("id", parsed.data.profile_id);
+
+  if (error) {
+    return { ok: false, message: normalizeSchemaMessage(error.message) };
+  }
+
+  void logAuditEvent({
+    action_type: "sales_profile_deleted",
+    entity_type: "sales_profiles",
+    entity_id: parsed.data.profile_id,
+    metadata: {
+      actor_id: actor.id,
+      full_name: currentProfile.full_name,
+    },
+  }).catch(() => undefined);
+
+  revalidatePath("/sales-team");
+
+  return { ok: true, profile_id: parsed.data.profile_id };
 }
 
 export async function updateSalesCommissionCycleStatusAction(payload: unknown) {

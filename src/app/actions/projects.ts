@@ -36,6 +36,26 @@ const updateProjectCommissionSchema = z.object({
   commission_rate: z.coerce.number().min(0).max(100),
 });
 
+const updateProjectTemplateSchema = z.object({
+  project_id: z.string().uuid(),
+  name: z.string().min(2).max(160),
+  description: z.string().max(500).optional().nullable(),
+  status: projectStatusSchema,
+  due_date: z.string().optional().nullable(),
+  commission_rate: z.coerce.number().min(0).max(100),
+  active: z.boolean(),
+  require_customer_name: z.boolean(),
+  require_customer_phone: z.boolean(),
+  require_customer_address: z.boolean(),
+  require_face_photo: z.boolean(),
+  require_id_card: z.boolean(),
+  require_id_address: z.boolean(),
+});
+
+const deleteProjectTemplateSchema = z.object({
+  project_id: z.string().uuid(),
+});
+
 const requestTransferSchema = z.object({
   project_case_id: z.string().uuid(),
   to_sales_id: z.string().uuid(),
@@ -107,6 +127,10 @@ function normalizeSchemaMessage(message: string) {
     return "There is already a pending transfer request for this sales case";
   }
 
+  if (lowered.includes("stack depth limit exceeded")) {
+    return "Database role policy recursion detected. Please apply the latest supabase/schema.sql";
+  }
+
   return message;
 }
 
@@ -161,7 +185,7 @@ export async function createProjectAction(payload: unknown) {
     return { ok: false, message: "Invalid project payload" };
   }
 
-  const supabase = createClient();
+  const supabase = createServiceClient() ?? createClient();
   const commissionRate = roundRate(parsed.data.commission_rate);
   const dueDate = normalizeOptionalDate(parsed.data.due_date);
 
@@ -402,6 +426,139 @@ export async function createProjectCaseAction(formData: FormData) {
   return { ok: true, project_case: createdCase };
 }
 
+export async function updateProjectTemplateAction(payload: unknown) {
+  const actor = await assertPermission("projects:edit");
+
+  if (actor.role !== "CEO") {
+    return { ok: false, message: "Only CEO can update projects" };
+  }
+
+  const parsed = updateProjectTemplateSchema.safeParse(payload);
+
+  if (!parsed.success) {
+    return { ok: false, message: "Invalid project payload" };
+  }
+
+  const supabase = createServiceClient() ?? createClient();
+  const commissionRate = roundRate(parsed.data.commission_rate);
+  const dueDate = normalizeOptionalDate(parsed.data.due_date);
+
+  const updatePayload = {
+    name: parsed.data.name.trim(),
+    description: normalizeOptionalText(parsed.data.description),
+    status: parsed.data.status,
+    due_date: dueDate,
+    commission_rate: commissionRate,
+    active: parsed.data.active,
+    require_customer_name: parsed.data.require_customer_name,
+    require_customer_phone: parsed.data.require_customer_phone,
+    require_customer_address: parsed.data.require_customer_address,
+    require_face_photo: parsed.data.require_face_photo,
+    require_id_card: parsed.data.require_id_card,
+    require_id_address: parsed.data.require_id_address,
+  };
+
+  if (!supabase) {
+    return {
+      ok: true,
+      project: {
+        id: parsed.data.project_id,
+        ...updatePayload,
+        is_template: true,
+        updated_at: new Date().toISOString(),
+      },
+    };
+  }
+
+  const { data, error } = await supabase
+    .from("projects")
+    .update(updatePayload)
+    .eq("id", parsed.data.project_id)
+    .eq("is_template", true)
+    .select(
+      "id, name, description, status, owner_id, customer_id, due_date, commission_rate, active, is_template, require_customer_name, require_customer_phone, require_customer_address, require_face_photo, require_id_card, require_id_address, updated_at, created_at",
+    )
+    .single();
+
+  if (error || !data) {
+    return { ok: false, message: normalizeSchemaMessage(error?.message ?? "Unable to update project") };
+  }
+
+  await supabase
+    .from("project_cases")
+    .update({ commission_rate: commissionRate })
+    .eq("project_id", parsed.data.project_id)
+    .in("lifecycle_status", ["open", "in_progress", "handover_pending"]);
+
+  void logAuditEvent({
+    action_type: "project_template_updated",
+    entity_type: "projects",
+    entity_id: data.id,
+    metadata: {
+      actor_id: actor.id,
+      project_name: data.name,
+      status: data.status,
+      commission_rate: data.commission_rate,
+    },
+  }).catch(() => undefined);
+
+  revalidatePath("/projects");
+  revalidatePath("/dashboard");
+
+  return { ok: true, project: data };
+}
+
+export async function deleteProjectTemplateAction(payload: unknown) {
+  const actor = await assertPermission("projects:edit");
+
+  if (actor.role !== "CEO") {
+    return { ok: false, message: "Only CEO can delete projects" };
+  }
+
+  const parsed = deleteProjectTemplateSchema.safeParse(payload);
+
+  if (!parsed.success) {
+    return { ok: false, message: "Invalid project payload" };
+  }
+
+  const supabase = createServiceClient() ?? createClient();
+
+  if (!supabase) {
+    return { ok: true, project_id: parsed.data.project_id };
+  }
+
+  const { data, error } = await supabase
+    .from("projects")
+    .update({
+      is_template: false,
+      active: false,
+      status: "done",
+    })
+    .eq("id", parsed.data.project_id)
+    .eq("is_template", true)
+    .select("id, name")
+    .single();
+
+  if (error || !data) {
+    return { ok: false, message: normalizeSchemaMessage(error?.message ?? "Unable to delete project") };
+  }
+
+  void logAuditEvent({
+    action_type: "project_template_archived",
+    entity_type: "projects",
+    entity_id: data.id,
+    metadata: {
+      actor_id: actor.id,
+      project_name: data.name,
+    },
+  }).catch(() => undefined);
+
+  revalidatePath("/projects");
+  revalidatePath("/dashboard");
+
+  return { ok: true, project_id: data.id };
+}
+
 export async function requestProjectTransferAction(payload: unknown) {
   const actor = await assertPermission("projects:view");
   const parsed = requestTransferSchema.safeParse(payload);
@@ -579,7 +736,7 @@ export async function updateProjectCommissionRateAction(payload: unknown) {
   }
 
   const commissionRate = roundRate(parsed.data.commission_rate);
-  const supabase = createClient();
+  const supabase = createServiceClient() ?? createClient();
 
   if (!supabase) {
     return {
