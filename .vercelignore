@@ -1,0 +1,6 @@
+.next
+.next-dev
+.next-build
+.vercel-global
+node_modules
+ocr-server/node_modules
